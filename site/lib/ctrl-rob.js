@@ -14,7 +14,6 @@ $(function() {
     $results.fadeOut("slow", function() {
       $form.fadeIn("slow")
     })
-    console.log('gom')
     $question.val('')
     $question.focus()
   }
@@ -34,6 +33,9 @@ $(function() {
   }
 
   function fetchResultsForQuestion(question) {
+    $code.text('Loading results')
+    $resultsheader.text('')
+    $vieworiginal.hide()
     $form.fadeOut("slow", function() {
       $results.fadeIn("slow")
     })
@@ -41,8 +43,11 @@ $(function() {
     $.getJSON('/ask/' + question, function(data) {
        current_result = data
        $resultsheader.text(question)
-       $code.text(data.teh_codes)
-    })
+       $code.text(data.teh_codes.join('\n\n'))
+       $vieworiginal.show()
+     }).error(function(one, two, three) {
+       $code.text(one.responseText)
+     })
   }
 
   function viewOriginal() {
@@ -59,13 +64,17 @@ $(function() {
   $vieworiginal.on('click', viewOriginal)
   $askagain.on('click', askagain)
 
-  $(window).on('popstate', function() {
-    if(window.history.state) 
-      fetchResultsForQuestion(window.history.state)
-    else if(document.location.pathname.length > 1)
-      fetchResultsForQuestion(document.location.pathname.substr(1))
-    else
-      allowAskQuestion()
-  })
+  if(window.history.pushState) {
+    $(window).on('popstate', function() {
+      if(window.history.state) 
+        fetchResultsForQuestion(window.history.state)
+      else if(document.location.pathname.length > 1)
+        fetchResultsForQuestion(document.location.pathname.substr(1))
+      else
+        allowAskQuestion()
+    })
+  } else {
+    allowAskQuestion()
+  }
 
 })

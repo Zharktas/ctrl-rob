@@ -6,29 +6,45 @@ var app = require('express')()
 var _ = require('underscore')
 var request = require('request')
 var zlib = require('zlib')
+var $ = require('cheerio')
 
 var server = http.createServer(app).listen(process.env.PORT || 8080)
 
+app.get('/search/:question', function(req, res) {
 
-app.get('/ask/:question', function(req, res) {
-  res.send({
-    original_link: "http://stackoverflow.com/questions/1",
-    teh_codes: (function() {
-        function add_two_numbers() {
-          var x = 0
-            , y = 0
-          return x + y
-        }
-    }).toString()
-  })
-  res.end()
-  return
-  getAnswer(req.params.question, function(err, answer) {
-    if(err) throw err
-    res.send(answer)
-    res.end()
+  getQuestionAdvanced(req.params.question, function(err, question) {
+    if(err) return handleError(res, err)
+    fetchQuestionAnswer(question, function(err, codes) {
+      if(err) return handleError(res, err)
+      res.send({
+        original_link: question.link,
+        teh_codes: codes
+      })
+      res.end()
+    })
   })
 })
+
+app.get('/ask/:question', function(req, res) {
+
+  getQuestionAdvanced(req.params.question, function(err, question) {
+    if(err) return handleError(res, err)
+    fetchQuestionAnswer(question, function(err, codes) {
+      if(err) return handleError(res, err)
+      res.send({
+        original_link: question.link,
+        teh_codes: codes
+      })
+      res.end()
+    })
+  })
+
+})
+
+function handleError(res, err) {
+  res.statusCode = err.status || 500
+  res.end(err.message)
+}
 
 app.get('/:question', function(req, res) {
     send(req, '/')
@@ -53,11 +69,31 @@ app.use(function(req, res) {
     .pipe(res);
 })
 
+function makeApiRequest(url, cb) {
+  console.log('Requesting: ', url)
+  http.get({
+      hostname: 'api.stackexchange.com',
+      path: '/2.1' + url,
+      headers: {
+        "accept-encoding": "gzip"
+      }
+    }, function(res) {
+      var total = ''
+      var gzip = zlib.createGunzip()
+      res.pipe(gzip)
 
+      gzip.on('data', function(data) {
+        total += data.toString('utf8')
+      })
+      gzip.on('end', function() {
+        cb(null, JSON.parse(total))
+      })
+  }).on('error', cb)
+}
 
-function getAnswer(question, cb) {
-  makeApiRequest('http://api.stackexchange.com/2.1/search?order=desc&sort=activity&intitle='
-    + question 
+function getQuestionBasic(question, cb) {
+  makeApiRequest('/search?order=desc&sort=activity&intitle='
+    + encodeURIComponent(question)
     + '&site=stackoverflow&filter=withbody', 
     function(err, data) {
       if(err) return cb(err)
@@ -65,21 +101,19 @@ function getAnswer(question, cb) {
     })
 }
 
-function makeApiRequest(url, cb) {
-  console.log(url)
-  request({
-      url: url
-    }, function(err, res, body) {
-      zlib.Gunzip(body, function(err, unzipped) {
-        if(err) return cb(err)
-        cb(null, JSON.parse(unzipped.toString()))
-      })
-  }).on('error', cb)
+function getQuestionAdvanced(question, cb) {
+  makeApiRequest('/search/advanced?order=desc&sort=activity&q='
+    + encodeURIComponent(question)
+    + '&site=stackoverflow&filter=withbody', 
+    function(err, data) {
+      if(err) return cb(err)
+      parseQuestionDetails(data, cb)
+    })
 }
 
 function parseQuestionDetails(details, cb) {
   if(details.items && details.items.length > 0) {
-    fetchQuestionAnswer(details.items[0], cb)
+    cb(null, details.items[0])
   }
   else
     cb(new Error("No matching criteria"), null)
@@ -87,11 +121,14 @@ function parseQuestionDetails(details, cb) {
 
 function fetchQuestionAnswer(question, cb) {
   if(question.answer_count > 0) {
-    makeApiRequest('http://api.stackexchange.com/2.1/questions/' + question.question_id
+    makeApiRequest('/questions/' + question.question_id
       + '/answers/?filter=withbody&site=stackoverflow',
     function(err, answers) {
       if(err) return cb(err)
-      findGoodAnswerInCollection(question, answers, cb)
+      if(answers.items && answers.items.length > 0)
+        findGoodAnswerInCollection(question, answers.items, cb)
+      else
+        return new Error("Nobody else knows how to do that")
     })
   } else {
     cb(new Error("Nobody else knows how to do that"), null)
@@ -99,23 +136,38 @@ function fetchQuestionAnswer(question, cb) {
 }
 
 function findGoodAnswerInCollection(question, answers, cb) {
-  var bestAnswer = _.chain(answers)
-   .sort(function(answer) {
-     var score = 0
-     if(answer.answer_id === question.accepted_answer_id)
-       score += 10
-     score += answer.score
-     if(answer.body.indexOf('<code>') >= 0)
-       score += 10
-     else 
-       score -= 1000
-   })
-   .first()
+  var bestAnswer = _.sortBy(answers, function(answer) {
+                       var score = 0
+                       if(answer.answer_id === question.accepted_answer_id)
+                         score -= 10
+                       score -= answer.score
+                       if(answer.body.indexOf('<code>') >= 0)
+                         score -= 10
+                       else 
+                         score += 1000
+                       return score
+                     })[0]
 
    if(bestAnswer.body.indexOf('<code>') >= 0) {
-     cb(null, bestAnswer.body)
+     parseCodeOutOfAnswer(bestAnswer.body, cb)
    } else {
     cb(new Error("Nobody else knows how to do that"), null)
    }
-   
 } 
+
+function parseCodeOutOfAnswer(answer, cb) {
+  var tehcodes = []
+  try {
+    var $answer = $('<div>' + answer + '</div>')
+    var $tehcodes = $answer.find('code')
+
+    for(var i =0 ; i < $tehcodes.length; i++)
+      tehcodes.push($tehcodes.eq(i).html())
+  } catch(ex) {
+    return cb(ex, null)
+  }
+  cb(null, tehcodes)
+}
+
+
+
