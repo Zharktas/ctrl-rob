@@ -1,18 +1,9 @@
 {
-  "name": "centipede2013",
+  "name": "ctrl-rob",
   "version": "1.0.0",
   "dependencies": {
     "send": "~0.1.0",
-    "express": "~3.0.3",
-    "underscore": "~1.4.3"
-  },
-  "devDependencies": {
-    "primo": "",
-    "primo-animation": "",
-    "primo-text": "",
-    "primo-boundary": "",
-    "primo-rigidbody": "",
-    "primo-events": ""
+    "express": "~3.0.3"
   },
   "engines": {
     "node": "0.8.x",
