@@ -1,0 +1,21 @@
+{
+  "name": "centipede2013",
+  "version": "1.0.0",
+  "dependencies": {
+    "send": "~0.1.0",
+    "express": "~3.0.3",
+    "underscore": "~1.4.3"
+  },
+  "devDependencies": {
+    "primo": "",
+    "primo-animation": "",
+    "primo-text": "",
+    "primo-boundary": "",
+    "primo-rigidbody": "",
+    "primo-events": ""
+  },
+  "engines": {
+    "node": "0.8.x",
+    "npm": "1.1.x"
+  }
+}
