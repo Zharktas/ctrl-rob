@@ -73,7 +73,7 @@ function makeApiRequest(url, cb) {
   console.log('Requesting: ', url)
   http.get({
       hostname: 'api.stackexchange.com',
-      path: '/2.1' + url,
+      path: '/2.1' + url + '&=)pyfApyc5jgr00DXuplIGQ((',
       headers: {
         "accept-encoding": "gzip"
       }
@@ -116,7 +116,7 @@ function parseQuestionDetails(details, cb) {
     cb(null, details.items[0])
   }
   else
-    cb(new Error("No matching criteria"), null)
+    cb(new Error("Nobody has ever asked me anything like that before"), null)
 }
 
 function fetchQuestionAnswer(question, cb) {
@@ -128,10 +128,10 @@ function fetchQuestionAnswer(question, cb) {
       if(answers.items && answers.items.length > 0)
         findGoodAnswerInCollection(question, answers.items, cb)
       else
-        return new Error("Nobody else knows how to do that")
+        return new Error("Nobody else knows how to do that either")
     })
   } else {
-    cb(new Error("Nobody else knows how to do that"), null)
+    cb(new Error("Nobody else knows how to do that either"), null)
   }
 }
 
@@ -151,7 +151,7 @@ function findGoodAnswerInCollection(question, answers, cb) {
    if(bestAnswer.body.indexOf('<code>') >= 0) {
      parseCodeOutOfAnswer(bestAnswer.body, cb)
    } else {
-    cb(new Error("Nobody else knows how to do that"), null)
+    cb(new Error("Nobody else knows how to do that either"), null)
    }
 } 
 
