@@ -9,12 +9,31 @@ var zlib = require('zlib')
 
 var server = http.createServer(app).listen(process.env.PORT || 8080)
 
+
 app.get('/ask/:question', function(req, res) {
+  res.send({
+    original_link: "http://stackoverflow.com/questions/1",
+    teh_codes: (function() {
+        function add_two_numbers() {
+          var x = 0
+            , y = 0
+          return x + y
+        }
+    }).toString()
+  })
+  res.end()
+  return
   getAnswer(req.params.question, function(err, answer) {
     if(err) throw err
     res.send(answer)
     res.end()
   })
+})
+
+app.get('/:question', function(req, res) {
+    send(req, '/')
+      .root(path.join(__dirname, 'site'))
+      .pipe(res)
 })
 
 app.use(function(req, res) {
@@ -35,6 +54,7 @@ app.use(function(req, res) {
 })
 
 
+
 function getAnswer(question, cb) {
   makeApiRequest('http://api.stackexchange.com/2.1/search?order=desc&sort=activity&intitle='
     + question 
@@ -46,6 +66,7 @@ function getAnswer(question, cb) {
 }
 
 function makeApiRequest(url, cb) {
+  console.log(url)
   request({
       url: url
     }, function(err, res, body) {
@@ -57,9 +78,8 @@ function makeApiRequest(url, cb) {
 }
 
 function parseQuestionDetails(details, cb) {
-  var parsed = JSON.parse(details)
-  if(parsed.items && parsed.items.length > 0) {
-    fetchQuestionAnswer(parsed.items[0], cb)
+  if(details.items && details.items.length > 0) {
+    fetchQuestionAnswer(details.items[0], cb)
   }
   else
     cb(new Error("No matching criteria"), null)
